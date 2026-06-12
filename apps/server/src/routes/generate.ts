@@ -7,9 +7,11 @@ import { convertToPcm } from '../services/audioConverter'
 import { transcribeAudio, type IFlytekASRConfig } from '../services/iflytekASR'
 import { extractStage1 } from '../services/stage1'
 import { expandPrompt } from '../services/stage2'
+import { generateImage, editImage } from '../services/imageGeneration'
 import {
   buildContextAfterStage1,
   applyStage2ToContext,
+  addImageToContext,
 } from '../services/contextManager'
 
 const router = express.Router()
@@ -138,6 +140,7 @@ router.post('/', upload.single('audio'), async (req, res) => {
 
     let prompt: string | null = null
     let negativePrompt: string | null = null
+    let imageUrl: string | null = null
 
     // 4. Stage 2：信息完整时扩写 Prompt
     if (stage1Result.status === 'complete') {
@@ -156,6 +159,31 @@ router.post('/', upload.single('audio'), async (req, res) => {
           .status(503)
           .json(makeErrorResponse('Prompt 扩写失败，请重新描述'))
       }
+
+      // 5. 图像生成 / 编辑
+      try {
+        const shouldEdit =
+          stage1Result.edit_mode === 'image_edit' &&
+          updatedContext.current_image_url
+
+        if (shouldEdit) {
+          imageUrl = await editImage(
+            updatedContext.current_image_url!,
+            prompt
+          )
+          console.log('图像编辑完成:', imageUrl)
+        } else {
+          imageUrl = await generateImage(prompt, negativePrompt || '')
+          console.log('图像生成完成:', imageUrl)
+        }
+
+        updatedContext = addImageToContext(updatedContext, imageUrl)
+      } catch (imageError) {
+        console.error('图像生成失败:', imageError)
+        return res
+          .status(503)
+          .json(makeErrorResponse('图片生成失败，请重试'))
+      }
     }
 
     const response: GenerateResponse = {
@@ -165,10 +193,13 @@ router.post('/', upload.single('audio'), async (req, res) => {
       extracted: stage1Result.extracted,
       clarification_question: stage1Result.clarification_question,
       suggestions: stage1Result.suggestions,
-      response: stage1Result.response,
+      response:
+        stage1Result.status === 'complete' && imageUrl
+          ? `${stage1Result.response} 图片已生成。`
+          : stage1Result.response,
       prompt,
       negative_prompt: negativePrompt,
-      image_url: null,
+      image_url: imageUrl,
       updated_context: updatedContext,
     }
 

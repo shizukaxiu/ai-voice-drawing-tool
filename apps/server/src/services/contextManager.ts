@@ -105,3 +105,20 @@ export function applyStage2ToContext(
     negative_prompt: stage2.negative_prompt,
   }
 }
+
+export function addImageToContext(
+  context: SessionContext,
+  imageUrl: string
+): SessionContext {
+  const imageMessage: ChatMessage = {
+    role: 'assistant',
+    content: imageUrl,
+    type: 'image',
+    created_at: new Date().toISOString(),
+  }
+  return {
+    ...context,
+    current_image_url: imageUrl,
+    conversation_history: [...context.conversation_history, imageMessage],
+  }
+}

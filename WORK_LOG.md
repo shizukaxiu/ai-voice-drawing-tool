@@ -117,4 +117,29 @@
 
 ### 下一步
 
-- [ ] 接入通义万相生图 / 图像编辑 API
+- [x] 接入通义万相生图 / 图像编辑 API
+
+---
+
+## 2026-06-12 第六阶段：通义万相图像生成与编辑
+
+### 已完成
+
+- [x] 调研并确认 DashScope 文生图与图像编辑异步 API 流程
+- [x] 实现 `services/imageGeneration.ts`
+  - `generateImage(prompt, negativePrompt)`：调用 `wanx2.1-t2i-turbo` 文生图
+  - `editImage(baseImageUrl, prompt)`：调用 `wanx2.1-imageedit` 指令编辑
+  - 统一异步任务创建与轮询，含超时与失败处理
+- [x] 更新 `services/contextManager.ts`：新增 `addImageToContext` 保存生成图片
+- [x] 在 `/api/generate` 中完成端到端流程
+  - Stage 1 complete → Stage 2 扩写 → 根据 `edit_mode` 选择文生图或图生图
+  - 返回 `image_url` 与更新后的上下文
+- [x] 补充 `DASHSCOPE_API_KEY` 到 `.env.example`，更新 README 开发状态
+- [x] 全量编译通过
+- [x] 本地测试非法 key 时正确捕获 401 错误
+- [x] 提交并推送到 GitHub
+
+### 下一步
+
+- [ ] 前端微信对话式 UI 实现
+- [ ] 多轮修改与上下文管理联调
