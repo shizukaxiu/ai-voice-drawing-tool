@@ -11,14 +11,18 @@
 - [x] 完成 `design.md` 设计文档并推送到 GitHub
 - [x] 创建 TODO 清单，规划代码框架搭建步骤
 - [x] 创建 `WORK_LOG.md` 工作日志文件
-
-### 已完成
-
 - [x] 创建项目目录结构（apps/web、apps/server、packages/shared）
   - 创建了 `apps/web`、`apps/server`、`packages/shared` 三个目录
   - 添加 `.gitkeep` 文件以便 Git 跟踪空目录
   - 提交并推送到 GitHub：`b26b11f`
+- [x] 初始化前端项目（React + Vite + TypeScript + TailwindCSS）
+  - 使用 Vite 创建 React + TypeScript 项目于 `apps/web`
+  - 安装并配置 TailwindCSS v4（`@tailwindcss/vite` 插件）
+  - 创建 `components`、`hooks`、`services`、`types`、`store` 目录
+  - 清理默认 `App.tsx` 为项目初始页面
+  - 验证 `npm run build` 成功
+  - 提交并推送到 GitHub：`757ba4b`
 
 ### 待开始
 
-- [ ] 初始化前端项目（React + Vite + TypeScript + TailwindCSS）
+- [ ] 初始化后端项目（Express + TypeScript）
