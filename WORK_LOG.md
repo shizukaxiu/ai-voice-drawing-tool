@@ -56,3 +56,22 @@
 ### 下一步
 
 - [ ] 后端接入讯飞 ASR，将音频转为文字
+
+---
+
+## 2026-06-12 第三阶段：后端接入讯飞 ASR
+
+### 已完成
+
+- [x] 安装 ffmpeg 并确认可用路径（用于音频格式转换）
+- [x] 安装后端依赖：`ws`、`ffmpeg-static`、`@types/ws`
+- [x] 实现 `audioConverter.ts`：任意音频 → PCM 16kHz/16bit/单声道
+- [x] 实现 `iflytekASR.ts`：讯飞流式听写 WebSocket 签名、分帧发送、结果拼接
+- [x] 在 `/api/generate` 中接入 ASR，失败时返回 `error` 状态提示用户重录
+- [x] 补充 `.env.example` 与 README 环境变量说明
+- [x] 编译检查并本地测试 ASR 链路
+- [x] 提交并推送到 GitHub
+
+### 下一步
+
+- [ ] 接入 DeepSeek-V3 进行 Stage 1（意图提取 / 澄清）

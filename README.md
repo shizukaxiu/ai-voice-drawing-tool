@@ -162,10 +162,10 @@ DeepSeek-V3 扩写为通义万相 Prompt
 - [x] Express + TypeScript 后端初始化
 - [x] 前后端共享类型配置
 - [x] 并发开发脚本配置
+- [x] 前端录音与音频上传
+- [x] 后端接入讯飞 ASR（含音频转码、WebSocket 签名、结果拼接）
 
 进行中 / 待实现：
-- [ ] 前端录音与音频上传
-- [ ] 讯飞 ASR 接入
 - [ ] DeepSeek Stage 1 / Stage 2 接入
 - [ ] 通义万相生图 / 编辑接入
 - [ ] 微信对话式 UI 实现
