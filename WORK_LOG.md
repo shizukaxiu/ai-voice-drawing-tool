@@ -31,7 +31,14 @@
   - 默认端口设为 `8080`（避免本地 3000 端口冲突）
   - 验证 `npm run build` 成功，健康检查接口返回正常
   - 提交并推送到 GitHub：`331db74`
+- [x] 配置前后端共享类型（packages/shared）
+  - 创建根目录 `package.json`，配置 npm workspaces
+  - 创建 `@voice-draw/shared` 包，定义核心类型
+  - 配置前后端通过 npm workspace 引用共享类型
+  - 验证前后端 `npm run build` 均成功
+  - 创建根目录 `.gitignore`，排除 `node_modules`、`dist` 等
+  - 提交并推送到 GitHub：`f0dc469`
 
 ### 待开始
 
-- [ ] 配置前后端共享类型（packages/shared）
+- [ ] 配置开发启动脚本（同时启动前后端）
