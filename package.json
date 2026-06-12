@@ -17,5 +17,8 @@
   "devDependencies": {
     "concurrently": "^9.1.2",
     "typescript": "^5.8.3"
+  },
+  "overrides": {
+    "@types/express": "4.17.21"
   }
 }
