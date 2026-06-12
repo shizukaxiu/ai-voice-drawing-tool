@@ -38,7 +38,14 @@
   - 验证前后端 `npm run build` 均成功
   - 创建根目录 `.gitignore`，排除 `node_modules`、`dist` 等
   - 提交并推送到 GitHub：`f0dc469`
+- [x] 配置开发启动脚本（同时启动前后端）
+  - 安装 `concurrently`
+  - 根目录 `package.json` 添加 `dev` 脚本，同时启动前后端
+  - 添加 `build` 脚本，构建 shared、server、web
+  - 验证 `npm run build` 成功
+  - 验证 `npm run dev` 同时启动前后端（前端 5173，后端 8080）
+  - 提交并推送到 GitHub：`840880f`
 
 ### 待开始
 
-- [ ] 配置开发启动脚本（同时启动前后端）
+- [ ] 编写 README 运行说明
