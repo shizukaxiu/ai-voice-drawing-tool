@@ -141,5 +141,34 @@
 
 ### 下一步
 
-- [ ] 前端微信对话式 UI 实现
-- [ ] 多轮修改与上下文管理联调
+- [x] 前端微信对话式 UI 实现
+- [x] 多轮修改与上下文管理联调
+
+---
+
+## 2026-06-12 第七阶段：前端微信对话式 UI 与多轮交互
+
+### 已完成
+
+- [x] 安装 `zustand` 作为前端状态管理
+- [x] 实现 `store/useChatStore.ts`
+  - 维护 `appState`、`messages`、`sessionId`、`currentImageUrl`、`currentParams`、`nextEditMode`
+  - 提供录音、上传、澄清、图片生成、错误、重置等状态迁移
+- [x] 实现 UI 组件
+  - `ChatMessageList`：消息列表 + 自动滚动
+  - `ChatMessageItem`：用户语音气泡、AI 文字气泡、图片卡片
+  - `SuggestionChips`：追问建议横向展示
+  - `StatusBar`：当前状态提示
+  - `ImageActions`：整张重画 / 开启新对话
+  - `RecorderButton`：支持 disabled 与开始/结束回调
+- [x] 重写 `App.tsx`：整合录音、上传、状态展示、多轮上下文
+- [x] 本地启动前后端开发服务器，确认前端与后端均正常启动
+- [x] 全量编译通过
+- [x] 提交并推送到 GitHub
+
+### 后续可优化
+
+- [ ] 语音消息播放与重播
+- [ ] 图片下载与放大查看
+- [ ] 建议选项一键填入/朗读
+- [ ] 错误重试与加载状态细节优化
