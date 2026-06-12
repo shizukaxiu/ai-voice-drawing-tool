@@ -22,7 +22,16 @@
   - 清理默认 `App.tsx` 为项目初始页面
   - 验证 `npm run build` 成功
   - 提交并推送到 GitHub：`757ba4b`
+- [x] 初始化后端项目（Express + TypeScript）
+  - 在 `apps/server` 中初始化 npm 项目
+  - 安装 Express、CORS、dotenv 等依赖
+  - 配置 TypeScript（`tsconfig.json`）
+  - 创建 `routes`、`services`、`types`、`utils`、`prompts` 目录
+  - 创建入口文件 `src/index.ts`，提供 `/health` 健康检查接口
+  - 默认端口设为 `8080`（避免本地 3000 端口冲突）
+  - 验证 `npm run build` 成功，健康检查接口返回正常
+  - 提交并推送到 GitHub：`331db74`
 
 ### 待开始
 
-- [ ] 初始化后端项目（Express + TypeScript）
+- [ ] 配置前后端共享类型（packages/shared）
