@@ -74,4 +74,25 @@
 
 ### 下一步
 
-- [ ] 接入 DeepSeek-V3 进行 Stage 1（意图提取 / 澄清）
+- [x] 接入 DeepSeek-V3 进行 Stage 1（意图提取 / 澄清）
+
+---
+
+## 2026-06-12 第四阶段：DeepSeek Stage 1 意图提取与澄清
+
+### 已完成
+
+- [x] 安装 `openai` SDK 调用 DeepSeek API
+- [x] 实现 `deepseek.ts` 客户端配置（支持 DEEPSEEK_API_KEY / BASE_URL / MODEL）
+- [x] 实现 `prompts/stage1.ts`，按设计文档构建 Stage 1 系统提示词
+- [x] 实现 `services/stage1.ts`：JSON 模式调用、解析失败自动重试一次、字段归一化
+- [x] 实现 `services/contextManager.ts`：更新会话上下文与聊天记录
+- [x] 在 `/api/generate` 中接入 Stage 1：ASR 成功后送入 LLM，返回 `complete` / `need_clarification` / `error`
+- [x] 更新 `.env.example` 与 README 开发状态
+- [x] 全量编译通过
+- [x] 本地测试：未配置 key 时返回明确错误；非法 key 时返回 401 并被捕获
+- [x] 提交并推送到 GitHub
+
+### 下一步
+
+- [ ] 接入 DeepSeek Stage 2，将结构化参数扩写为文生图 Prompt
