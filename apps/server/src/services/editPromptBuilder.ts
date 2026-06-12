@@ -6,7 +6,7 @@ export interface EditPromptResult {
 }
 
 const defaultNegative =
-  '低质量，模糊，变形，多余肢体，文字，水印，签名'
+  '低质量，模糊，变形，多余肢体，畸形，丑陋，崩坏，文字，水印，签名，噪点，过曝，欠曝'
 
 function extractRemovedObjects(input: string): string[] {
   const removePattern = /(?:去掉|删除|移除|去除|不要)\s*([，,、\s]*[^，,。！!?？]+)/g

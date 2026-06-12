@@ -60,8 +60,16 @@ JSON 结构如下：
 - 用户说“好看一点” → 追问“好看”具体指什么（更鲜艳？更写实？更简洁？）。
 - 用户说“改一下” → 追问具体改哪里。
 
-### 5. 用户意图是“修改当前图片”时的处理
+### 5. 追问状态下的补充
+如果 \`pending_clarification\` 为 true，说明 AI 正在等待用户补充信息。此时：
+- 用户可能只回复一个风格、场景或建议选项，例如“写实风格”、“咖啡厅”。
+- 你必须把用户的补充与 current_params 合并，返回完整的 extracted。
+- 如果补充后仍然缺少 subject 或 style，继续追问；否则返回 complete。
+
+### 6. 用户意图是“修改当前图片”时的处理
 如果上下文中有当前图片的参数，且用户说“把猫改成黑色”、“背景换成星空”、“更写实一点”等，请基于已有参数做局部更新，返回 status=complete，并在 extracted 中体现修改后的完整参数。
+
+修改时，把“去掉/删除/移除 XX”中的 XX 放入 \`details\` 的移除语义中，方便后续编辑模型理解。
 
 edit_mode 的处理：
 - 语音输入的修改请求，默认视为基于原图的编辑，edit_mode: "image_edit"。
@@ -76,6 +84,54 @@ edit_mode 的处理：
 - “换个风格” → 只更新 style，保留 subject 和 scene，edit_mode: "image_edit"。
 
 ## 示例
+
+### 示例 5（追问后补充）
+上下文：pending_clarification 为 true，current_params 为 { subject: "一只猫", scene: null, style: null }
+用户输入：写实风格，在花园里。
+输出：
+{
+  "status": "complete",
+  "force_generate": false,
+  "edit_mode": "image_edit",
+  "extracted": {
+    "subject": "一只猫",
+    "action": null,
+    "scene": "花园",
+    "style": "写实",
+    "color_tone": "自然色调",
+    "mood": "宁静",
+    "details": [],
+    "composition": "中景构图，猫在画面中央"
+  },
+  "missing_fields": [],
+  "clarification_question": "",
+  "suggestions": [],
+  "response": "好的，一只写实风格的猫在花园里。"
+}
+
+### 示例 6（修改 - 去掉元素）
+上下文：current_params 为 { subject: "一个女孩", scene: "生日派对", style: "动漫", details: ["金色眼罩"] }
+用户输入：去掉眼罩，露出完整脸部。
+输出：
+{
+  "status": "complete",
+  "force_generate": false,
+  "edit_mode": "image_edit",
+  "extracted": {
+    "subject": "一个女孩",
+    "action": "露出完整脸部",
+    "scene": "生日派对",
+    "style": "动漫",
+    "color_tone": null,
+    "mood": "欢乐",
+    "details": [],
+    "composition": "中景构图"
+  },
+  "missing_fields": [],
+  "clarification_question": "",
+  "suggestions": [],
+  "response": "好的，去掉眼罩，露出完整脸部，其他保持不变。"
+}
 
 ### 示例 1
 用户输入：画一只在月球上插旗的卡通橘猫。
@@ -181,17 +237,23 @@ export function buildStage1UserPrompt(
   context: SessionContext | null,
   editMode: EditMode
 ): string {
-  const contextText = context
-    ? `当前会话上下文：\n${JSON.stringify(
-        {
-          current_params: context.current_params,
-          current_image_url: context.current_image_url,
-          pending_clarification: context.pending_clarification,
-          mode: context.mode,
-        },
-        null,
-        2
-      )}`
+  const summary = context
+    ? {
+        current_params: context.current_params,
+        current_image_url: context.current_image_url,
+        pending_clarification: context.pending_clarification,
+        mode: context.mode,
+      }
+    : null
+
+  const recentHistory = context?.conversation_history.slice(-6) ?? []
+  const historyText =
+    recentHistory.length > 0
+      ? `最近对话记录：\n${JSON.stringify(recentHistory, null, 2)}`
+      : '最近对话记录：无'
+
+  const contextText = summary
+    ? `当前会话上下文：\n${JSON.stringify(summary, null, 2)}\n\n${historyText}`
     : '当前会话上下文：无历史上下文，这是首次创作。'
 
   return `${contextText}
