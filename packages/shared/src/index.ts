@@ -45,6 +45,8 @@ export interface ChatMessage {
 export interface SessionContext {
   session_id: string
   current_params: ExtractedParams | null
+  current_prompt: string | null
+  negative_prompt: string | null
   current_image_url: string | null
   conversation_history: ChatMessage[]
   pending_clarification: boolean
@@ -69,6 +71,8 @@ export interface GenerateResponse {
   clarification_question: string
   suggestions: string[]
   response: string
+  prompt: string | null
+  negative_prompt: string | null
   image_url: string | null
   updated_context: SessionContext | null
 }

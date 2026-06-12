@@ -3,12 +3,15 @@ import type {
   ExtractedParams,
   SessionContext,
   Stage1Result,
+  Stage2Result,
 } from '@voice-draw/shared'
 
 export function createInitialContext(sessionId: string): SessionContext {
   return {
     session_id: sessionId,
     current_params: null,
+    current_prompt: null,
+    negative_prompt: null,
     current_image_url: null,
     conversation_history: [],
     pending_clarification: false,
@@ -88,5 +91,17 @@ export function mergeExtractedParams(
     details:
       update.details.length > 0 ? update.details : base.details,
     composition: update.composition ?? base.composition,
+  }
+}
+
+
+export function applyStage2ToContext(
+  context: SessionContext,
+  stage2: Stage2Result
+): SessionContext {
+  return {
+    ...context,
+    current_prompt: stage2.prompt,
+    negative_prompt: stage2.negative_prompt,
   }
 }

@@ -95,4 +95,26 @@
 
 ### 下一步
 
-- [ ] 接入 DeepSeek Stage 2，将结构化参数扩写为文生图 Prompt
+- [x] 接入 DeepSeek Stage 2，将结构化参数扩写为文生图 Prompt
+
+---
+
+## 2026-06-12 第五阶段：DeepSeek Stage 2 Prompt 扩写
+
+### 已完成
+
+- [x] 扩展 `@voice-draw/shared` 类型：
+  - `SessionContext` 增加 `current_prompt` / `negative_prompt`
+  - `GenerateResponse` 增加 `prompt` / `negative_prompt`
+- [x] 实现 `prompts/stage2.ts`：按设计文档构建 Stage 2 系统提示词
+- [x] 实现 `services/stage2.ts`：JSON 模式调用 DeepSeek 扩写 Prompt，解析失败自动重试一次
+- [x] 更新 `services/contextManager.ts`：`applyStage2ToContext` 保存扩写结果到上下文
+- [x] 在 `/api/generate` 中接入 Stage 2：Stage 1 `complete` 后自动调用，失败返回错误
+- [x] 更新 README 开发状态
+- [x] 全量编译通过
+- [x] 本地测试非法 key 时正确捕获 401 错误
+- [x] 提交并推送到 GitHub
+
+### 下一步
+
+- [ ] 接入通义万相生图 / 图像编辑 API

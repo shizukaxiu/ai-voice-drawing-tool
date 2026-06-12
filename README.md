@@ -166,7 +166,7 @@ DeepSeek-V3 扩写为通义万相 Prompt
 - [x] 后端接入讯飞 ASR（含音频转码、WebSocket 签名、结果拼接）
 
 进行中 / 待实现：
-- [ ] DeepSeek Stage 1 / Stage 2 接入
+- [x] DeepSeek Stage 1 / Stage 2 接入
 - [ ] 通义万相生图 / 编辑接入
 - [ ] 微信对话式 UI 实现
 - [ ] 多轮修改与上下文管理

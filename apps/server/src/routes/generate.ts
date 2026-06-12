@@ -6,7 +6,11 @@ import type { GenerateResponse, GenerateRequest } from '@voice-draw/shared'
 import { convertToPcm } from '../services/audioConverter'
 import { transcribeAudio, type IFlytekASRConfig } from '../services/iflytekASR'
 import { extractStage1 } from '../services/stage1'
-import { buildContextAfterStage1 } from '../services/contextManager'
+import { expandPrompt } from '../services/stage2'
+import {
+  buildContextAfterStage1,
+  applyStage2ToContext,
+} from '../services/contextManager'
 
 const router = express.Router()
 
@@ -53,6 +57,8 @@ function makeErrorResponse(message: string): GenerateResponse {
     clarification_question: '',
     suggestions: [],
     response: message,
+    prompt: null,
+    negative_prompt: null,
     image_url: null,
     updated_context: null,
   }
@@ -118,7 +124,7 @@ router.post('/', upload.single('audio'), async (req, res) => {
     }
 
     // 3. 组装响应与更新后的上下文
-    const updatedContext = buildContextAfterStage1(
+    let updatedContext = buildContextAfterStage1(
       request.session_id,
       request.context,
       transcript,
@@ -130,6 +136,28 @@ router.post('/', upload.single('audio'), async (req, res) => {
       return res.status(503).json(makeErrorResponse('理解需求失败，请重新描述'))
     }
 
+    let prompt: string | null = null
+    let negativePrompt: string | null = null
+
+    // 4. Stage 2：信息完整时扩写 Prompt
+    if (stage1Result.status === 'complete') {
+      try {
+        const stage2Result = await expandPrompt(
+          stage1Result.extracted,
+          stage1Result.edit_mode
+        )
+        prompt = stage2Result.prompt
+        negativePrompt = stage2Result.negative_prompt
+        updatedContext = applyStage2ToContext(updatedContext, stage2Result)
+        console.log('Stage 2 扩写完成:', stage2Result)
+      } catch (stage2Error) {
+        console.error('Stage 2 处理失败:', stage2Error)
+        return res
+          .status(503)
+          .json(makeErrorResponse('Prompt 扩写失败，请重新描述'))
+      }
+    }
+
     const response: GenerateResponse = {
       status: stage1Result.status,
       force_generate: stage1Result.force_generate,
@@ -138,6 +166,8 @@ router.post('/', upload.single('audio'), async (req, res) => {
       clarification_question: stage1Result.clarification_question,
       suggestions: stage1Result.suggestions,
       response: stage1Result.response,
+      prompt,
+      negative_prompt: negativePrompt,
       image_url: null,
       updated_context: updatedContext,
     }
