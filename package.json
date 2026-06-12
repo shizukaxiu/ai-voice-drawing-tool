@@ -1,0 +1,17 @@
+{
+  "name": "voice-draw-ai",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AI 语音绘图工具",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "echo 'Please run dev in apps/web or apps/server'",
+    "build:shared": "npm run build --workspace=@voice-draw/shared"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  }
+}

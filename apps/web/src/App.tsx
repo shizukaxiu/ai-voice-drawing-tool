@@ -1,4 +1,8 @@
+import type { AppState } from '@voice-draw/shared'
+
 function App() {
+  const state: AppState = 'idle'
+
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
       <div className="text-center">
@@ -6,7 +10,7 @@ function App() {
           AI 语音绘图工具
         </h1>
         <p className="text-gray-600">
-          按住下方按钮开始语音描述
+          当前状态：{state}，按住下方按钮开始语音描述
         </p>
       </div>
     </div>
