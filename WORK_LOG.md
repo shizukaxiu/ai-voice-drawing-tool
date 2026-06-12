@@ -21,17 +21,38 @@
 
 ### 进行中
 
-- [ ] 前端录音与音频上传
+- [x] 前端录音与音频上传
 
 ---
 
 ## 2026-06-12 第二阶段：前端录音与音频上传
 
-### 计划
+### 已完成
 
-1. 创建 `useRecorder` Hook（基于 MediaRecorder API）
-2. 创建 `RecorderButton` 组件
-3. 创建前端 API service 上传音频
-4. 后端创建 `/api/generate` 接口接收音频文件
-5. 后端保存音频到临时目录
-6. 前后端联调验证
+- [x] 创建 `useRecorder` Hook（基于 MediaRecorder API）
+  - 支持开始/停止录音
+  - 处理麦克风权限错误
+  - 返回 `Blob` 格式音频
+- [x] 创建 `RecorderButton` 组件
+  - 按住说话 / 松开发送
+  - 支持鼠标和触摸操作
+  - 录音中视觉反馈
+- [x] 创建前端 API service
+  - `uploadAudio` 函数通过 FormData 上传音频
+  - 使用 `@voice-draw/shared` 中的类型
+- [x] 后端创建 `/api/generate` 接口
+  - 使用 `multer` 接收音频文件
+  - 保存到 `apps/server/uploads/`
+  - 返回 `GenerateResponse` 结构
+- [x] 联调验证
+  - 前后端同时启动成功
+  - 使用 curl 模拟音频上传成功
+  - 后端正确接收并保存文件
+- [x] 修复 npm workspaces 中 `@types/express` 版本冲突
+  - 在根目录 `package.json` 添加 `overrides`
+  - 清理并重新安装依赖
+- [x] 提交并推送到 GitHub：`92715f0`
+
+### 下一步
+
+- [ ] 后端接入讯飞 ASR，将音频转为文字
