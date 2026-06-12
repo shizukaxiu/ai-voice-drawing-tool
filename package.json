@@ -8,10 +8,14 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "echo 'Please run dev in apps/web or apps/server'",
-    "build:shared": "npm run build --workspace=@voice-draw/shared"
+    "dev": "concurrently \"npm run dev --workspace=server\" \"npm run dev --workspace=web\"",
+    "build": "npm run build --workspace=@voice-draw/shared && npm run build --workspace=server && npm run build --workspace=web",
+    "build:shared": "npm run build --workspace=@voice-draw/shared",
+    "build:server": "npm run build --workspace=server",
+    "build:web": "npm run build --workspace=web"
   },
   "devDependencies": {
+    "concurrently": "^9.1.2",
     "typescript": "^5.8.3"
   }
 }
