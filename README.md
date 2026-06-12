@@ -13,11 +13,12 @@
 | 层级 | 技术 |
 |------|------|
 | 前端 | React 18 + TypeScript + Vite + TailwindCSS v4 |
+| 状态管理 | Zustand + localStorage 持久化 |
 | 后端 | Node.js + Express + TypeScript |
 | 语音转文字 | 讯飞短语音识别 API |
 | 意图理解 / Prompt 扩写 | DeepSeek-V3 |
-| 首次图像生成 | 通义万相文生图 API |
-| 图像编辑 | 通义万相图像编辑 API（`wanx2.1-imageedit`） |
+| 首次图像生成 | 通义万相文生图 API（`wanx2.1-t2i-turbo`） |
+| 图像编辑 | 通义万相图像编辑 API（`wanx2.1-imageedit` / `description_edit`） |
 | 类型共享 | npm workspaces + `@voice-draw/shared` |
 
 ---
@@ -32,17 +33,17 @@
 │   │   │   ├── components/   # UI 组件
 │   │   │   ├── hooks/        # 自定义 Hooks
 │   │   │   ├── services/     # API 调用
-│   │   │   ├── store/        # 状态管理
-│   │   │   └── types/        # 本地类型
+│   │   │   └── store/        # 状态管理
 │   │   ├── package.json
 │   │   └── vite.config.ts
 │   └── server/               # Express 后端
 │       ├── src/
+│       │   ├── controllers/  # 生成/编辑 pipeline
+│       │   ├── middleware/   # API 配置中间件
 │       │   ├── routes/       # API 路由
 │       │   ├── services/     # ASR / LLM / 图像生成服务
-│       │   ├── types/        # 本地类型
-│       │   ├── utils/        # 工具函数
-│       │   └── prompts/      # Stage 1 / Stage 2 Prompt
+│       │   ├── prompts/      # Stage 1 / Stage 2 Prompt
+│       │   └── middleware/   # 请求级配置上下文
 │       ├── package.json
 │       └── tsconfig.json
 ├── packages/
@@ -66,8 +67,6 @@ cd ai-voice-drawing-tool
 
 ### 2. 安装依赖
 
-使用 npm workspaces 一次性安装所有依赖：
-
 ```bash
 npm install
 ```
@@ -81,7 +80,7 @@ cd apps/server
 cp .env.example .env
 ```
 
-然后编辑 `.env`，填入你的 API Keys：
+编辑 `.env`，填入你的 API Keys：
 
 ```env
 PORT=8080
@@ -93,9 +92,16 @@ IFLYTEK_API_SECRET=your_api_secret
 
 # DeepSeek
 DEEPSEEK_API_KEY=your_deepseek_api_key
+DEEPSEEK_MODEL=deepseek-chat
 
 # 阿里云通义万相
 DASHSCOPE_API_KEY=your_dashscope_api_key
+DASHSCOPE_IMAGE_MODEL=wanx2.1-t2i-turbo
+
+# 可选：硅基流动
+IMAGE_PROVIDER=dashscope
+SILICONFLOW_API_KEY=your_siliconflow_api_key
+SILICONFLOW_IMAGE_MODEL=Qwen/Qwen-Image-Edit-2509
 ```
 
 API Key 申请地址：
@@ -146,38 +152,33 @@ DeepSeek-V3 扩写为通义万相 Prompt
 ## 交互说明
 
 - 按住底部【按住说话】按钮描述想要的画面
-- AI 信息不足时会以文字气泡追问
+- AI 信息不足时会以文字气泡追问，点击建议卡片可直接使用该描述
 - 生成图片后，可以：
-  - **语音继续修改**：基于原图进行编辑
-  - **点击【整张重画】**：重新文生图
+  - **语音继续修改**：基于原图进行局部编辑
+  - **点击【整张重画】**：放弃原图，按新描述重新文生图
   - **点击【开启新对话】**：清空上下文重新开始
+  - **点击【放大查看】**：Lightbox 预览并下载图片
+- 左侧配置面板可填写 API Key，配置保存在浏览器本地；留空则使用服务端 `.env` 默认值
 
 ---
 
-## 开发状态
+## 已实现功能
 
-当前已完成：
 - [x] 项目目录结构搭建
-- [x] React + Vite + TypeScript + TailwindCSS 前端初始化
-- [x] Express + TypeScript 后端初始化
+- [x] React + Vite + TypeScript + TailwindCSS 前端
+- [x] Express + TypeScript 后端
 - [x] 前后端共享类型配置
 - [x] 并发开发脚本配置
 - [x] 前端录音与音频上传
 - [x] 后端接入讯飞 ASR（含音频转码、WebSocket 签名、结果拼接）
-
-进行中 / 待实现：
 - [x] DeepSeek Stage 1 / Stage 2 接入
 - [x] 通义万相生图 / 编辑接入
-- [x] 微信对话式 UI 实现
+- [x] 微信对话式 UI
 - [x] 多轮修改与上下文管理
-
-后续可优化：
-- [ ] 语音消息播放与重播
-- [ ] 图片下载与放大查看
-- [ ] 建议选项一键填入/朗读
-- [ ] 错误重试与加载状态细节优化
-- [ ] 微信对话式 UI 实现
-- [ ] 多轮修改与上下文管理
+- [x] 图片 Lightbox 预览与下载
+- [x] 建议选项一键点击提交
+- [x] 左侧 API Key 配置面板（localStorage 持久化）
+- [x] 图生图编辑 Prompt 优化（确定性编辑指令 + negative_prompt）
 
 ---
 

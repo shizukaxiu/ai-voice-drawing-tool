@@ -5,9 +5,10 @@ import { ImageLightbox } from './ImageLightbox'
 
 interface ChatMessageItemProps {
   message: DisplayMessage
+  onSuggestionClick?: (text: string) => void
 }
 
-export function ChatMessageItem({ message }: ChatMessageItemProps) {
+export function ChatMessageItem({ message, onSuggestionClick }: ChatMessageItemProps) {
   const isUser = message.role === 'user'
   const [lightboxOpen, setLightboxOpen] = useState(false)
 
@@ -68,7 +69,7 @@ export function ChatMessageItem({ message }: ChatMessageItemProps) {
         )}
         {!isUser && message.suggestions && message.suggestions.length > 0 && (
           <div className="mt-3">
-            <SuggestionChips suggestions={message.suggestions} />
+            <SuggestionChips suggestions={message.suggestions} onSuggestionClick={onSuggestionClick} />
           </div>
         )}
       </div>

@@ -1,7 +1,9 @@
 import OpenAI from 'openai'
+import { getApiConfig, type ApiConfig } from './apiConfig'
 
-export function createDeepSeekClient(): OpenAI {
-  const apiKey = process.env.DEEPSEEK_API_KEY
+export function createDeepSeekClient(config?: ApiConfig): OpenAI {
+  const cfg = config || getApiConfig()
+  const apiKey = cfg.deepseekApiKey || process.env.DEEPSEEK_API_KEY
   if (!apiKey) {
     throw new Error('DEEPSEEK_API_KEY 环境变量未配置')
   }
@@ -12,4 +14,7 @@ export function createDeepSeekClient(): OpenAI {
   })
 }
 
-export const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL || 'deepseek-chat'
+export function getDeepSeekModel(config?: ApiConfig): string {
+  const cfg = config || getApiConfig()
+  return cfg.deepseekModel || process.env.DEEPSEEK_MODEL || 'deepseek-chat'
+}

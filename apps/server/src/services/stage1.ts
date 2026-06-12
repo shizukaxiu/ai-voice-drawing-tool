@@ -1,6 +1,6 @@
 import type { EditMode, SessionContext, Stage1Result } from '@voice-draw/shared'
 import OpenAI from 'openai'
-import { createDeepSeekClient, DEEPSEEK_MODEL } from './deepseek'
+import { createDeepSeekClient, getDeepSeekModel } from './deepseek'
 import {
   buildStage1SystemPrompt,
   buildStage1UserPrompt,
@@ -57,10 +57,11 @@ export async function extractStage1(
 
   const callLLM = async (): Promise<string> => {
     const completion = await client.chat.completions.create({
-      model: DEEPSEEK_MODEL,
+      model: getDeepSeekModel(),
       messages,
       response_format: { type: 'json_object' },
       temperature: 0.7,
+      max_tokens: 8192,
     })
     return completion.choices[0]?.message?.content || ''
   }

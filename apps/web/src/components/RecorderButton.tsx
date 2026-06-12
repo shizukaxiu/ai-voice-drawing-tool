@@ -19,13 +19,13 @@ export function RecorderButton({
 
   const handleStart = async () => {
     if (disabled) return
-    onRecordingStart?.()
     await startRecording()
+    onRecordingStart?.()
   }
 
-  const handleStop = () => {
+  const handleStop = async () => {
     onRecordingEnd?.()
-    const audioBlob = stopRecording()
+    const audioBlob = await stopRecording()
     if (audioBlob) {
       onRecord?.(audioBlob)
     }

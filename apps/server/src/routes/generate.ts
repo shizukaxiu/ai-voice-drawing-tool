@@ -2,17 +2,14 @@ import express from 'express'
 import multer from 'multer'
 import path from 'path'
 import fs from 'fs'
-import type { GenerateResponse, GenerateRequest } from '@voice-draw/shared'
+import type { GenerateRequest } from '@voice-draw/shared'
 import { convertToPcm } from '../services/audioConverter'
 import { transcribeAudio, type IFlytekASRConfig } from '../services/iflytekASR'
-import { extractStage1 } from '../services/stage1'
-import { expandPrompt } from '../services/stage2'
-import { generateImage, editImage } from '../services/imageGeneration'
+import { getApiConfig } from '../services/apiConfig'
 import {
-  buildContextAfterStage1,
-  applyStage2ToContext,
-  addImageToContext,
-} from '../services/contextManager'
+  processGeneratePipeline,
+  makeErrorResponse,
+} from '../controllers/generateController'
 
 const router = express.Router()
 
@@ -41,29 +38,14 @@ const upload = multer({
 })
 
 function getASRConfig(): IFlytekASRConfig | null {
-  const appId = process.env.IFLYTEK_APP_ID
-  const apiKey = process.env.IFLYTEK_API_KEY
-  const apiSecret = process.env.IFLYTEK_API_SECRET
+  const config = getApiConfig()
+  const appId = config.iflytekAppId || process.env.IFLYTEK_APP_ID
+  const apiKey = config.iflytekApiKey || process.env.IFLYTEK_API_KEY
+  const apiSecret = config.iflytekApiSecret || process.env.IFLYTEK_API_SECRET
   if (!appId || !apiKey || !apiSecret) {
     return null
   }
   return { appId, apiKey, apiSecret }
-}
-
-function makeErrorResponse(message: string): GenerateResponse {
-  return {
-    status: 'error',
-    force_generate: false,
-    edit_mode: 'image_edit',
-    extracted: null,
-    clarification_question: '',
-    suggestions: [],
-    response: message,
-    prompt: null,
-    negative_prompt: null,
-    image_url: null,
-    updated_context: null,
-  }
 }
 
 router.post('/', upload.single('audio'), async (req, res) => {
@@ -111,98 +93,8 @@ router.post('/', upload.single('audio'), async (req, res) => {
         .json(makeErrorResponse('未能识别到语音内容，请重新录制'))
     }
 
-    // 2. Stage 1 意图理解
-    let stage1Result
-    try {
-      stage1Result = await extractStage1(
-        transcript,
-        request.context,
-        request.edit_mode
-      )
-      console.log('Stage 1 结果:', stage1Result)
-    } catch (llmError) {
-      console.error('Stage 1 处理失败:', llmError)
-      return res.status(503).json(makeErrorResponse('理解需求失败，请重新描述'))
-    }
-
-    // 3. 组装响应与更新后的上下文
-    let updatedContext = buildContextAfterStage1(
-      request.session_id,
-      request.context,
-      transcript,
-      stage1Result,
-      null
-    )
-
-    if (stage1Result.status === 'error') {
-      return res.status(503).json(makeErrorResponse('理解需求失败，请重新描述'))
-    }
-
-    let prompt: string | null = null
-    let negativePrompt: string | null = null
-    let imageUrl: string | null = null
-
-    // 4. Stage 2：信息完整时扩写 Prompt
-    if (stage1Result.status === 'complete') {
-      try {
-        const stage2Result = await expandPrompt(
-          stage1Result.extracted,
-          stage1Result.edit_mode
-        )
-        prompt = stage2Result.prompt
-        negativePrompt = stage2Result.negative_prompt
-        updatedContext = applyStage2ToContext(updatedContext, stage2Result)
-        console.log('Stage 2 扩写完成:', stage2Result)
-      } catch (stage2Error) {
-        console.error('Stage 2 处理失败:', stage2Error)
-        return res
-          .status(503)
-          .json(makeErrorResponse('Prompt 扩写失败，请重新描述'))
-      }
-
-      // 5. 图像生成 / 编辑
-      try {
-        const shouldEdit =
-          stage1Result.edit_mode === 'image_edit' &&
-          updatedContext.current_image_url
-
-        if (shouldEdit) {
-          imageUrl = await editImage(
-            updatedContext.current_image_url!,
-            prompt
-          )
-          console.log('图像编辑完成:', imageUrl)
-        } else {
-          imageUrl = await generateImage(prompt, negativePrompt || '')
-          console.log('图像生成完成:', imageUrl)
-        }
-
-        updatedContext = addImageToContext(updatedContext, imageUrl)
-      } catch (imageError) {
-        console.error('图像生成失败:', imageError)
-        return res
-          .status(503)
-          .json(makeErrorResponse('图片生成失败，请重试'))
-      }
-    }
-
-    const response: GenerateResponse = {
-      status: stage1Result.status,
-      force_generate: stage1Result.force_generate,
-      edit_mode: stage1Result.edit_mode,
-      extracted: stage1Result.extracted,
-      clarification_question: stage1Result.clarification_question,
-      suggestions: stage1Result.suggestions,
-      response:
-        stage1Result.status === 'complete' && imageUrl
-          ? `${stage1Result.response} 图片已生成。`
-          : stage1Result.response,
-      prompt,
-      negative_prompt: negativePrompt,
-      image_url: imageUrl,
-      updated_context: updatedContext,
-    }
-
+    // 2. Stage 1/2 + 图像生成
+    const response = await processGeneratePipeline(transcript, request)
     res.json(response)
   } catch (error) {
     console.error('处理上传失败:', error)

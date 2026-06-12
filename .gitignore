@@ -37,3 +37,10 @@ tmp
 temp
 uploads
 *.tmp
+apps/server/tmp-*
+screenshot*.png
+voice_attempt*.png
+ui_*.png
+round*.png
+edit_test_*.png
+test_*.png

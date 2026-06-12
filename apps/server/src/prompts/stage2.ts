@@ -2,33 +2,68 @@ import type { EditMode, ExtractedParams } from '@voice-draw/shared'
 
 export function buildStage2SystemPrompt(): string {
   return `你是一位专业的 AI 绘画提示词工程师。
-请根据用户提供的结构化图像参数，生成一段完整、清晰、适合通义万相模型的高质量画面描述 Prompt。
-如果是修改已有图片，该 Prompt 会作为指令编辑（description_edit）的输入，模型会基于原图尽量保留画面元素并按 Prompt 修改。
+请根据用户提供的结构化图像参数，生成一段适合通义万相模型的 Prompt 和 Negative Prompt。
 
 ## 输出格式
 只输出一个 JSON 对象，不要包含 Markdown 代码块标记或其他说明文字：
 
 {
-  "prompt": "用于通义万相的高质量画面描述 Prompt，中文为主，可追加英文质量增强词",
-  "negative_prompt": "用于避免低质量、畸形等问题的负面提示词（首次生成时使用，图像编辑时可选）"
+  "prompt": "用于通义万相的 Prompt",
+  "negative_prompt": "用于避免低质量、畸形或不要出现的元素的负面提示词"
 }
 
-## Prompt 编写要求
-1. 必须包含：主体、动作/状态、场景、风格、色调、情绪。
-2. 适当补充：光线、构图、细节、质量词（如“高清”、“细节丰富”、“masterpiece”）。
-3. 如果用户描述抽象，做合理扩写，但不要偏离原意。
-4. 优先使用中文，因为通义万相对中文 Prompt 理解较好；可在末尾追加英文质量增强词。
-5. Prompt 长度控制在 100-300 字之间。
-6. 负面提示词应包含常见质量问题：低质量、模糊、变形、多余肢体、文字、水印、签名等。
-7. 风格字段不限于固定列表，支持用户自定义。LLM 应将用户描述的风格词原样保留并适当扩写。
-8. 如果是修改模式，Prompt 应是完整画面描述（而非局部修改指令），便于图像编辑模型基于原图理解整体效果。`
+## 生成新图（mode 为 creating 或没有原图时）
+1. Prompt 必须是完整画面描述，包含主体、动作/状态、场景、风格、色调、情绪。
+2. 适当补充光线、构图、细节、质量词（如“高清”、“细节丰富”、“masterpiece”）。
+3. 优先使用中文，可在末尾追加英文质量增强词。
+4. Prompt 长度控制在 100-300 字之间。
+5. 负面提示词应包含常见质量问题：低质量、模糊、变形、多余肢体、文字、水印、签名等。
+
+## 修改已有图片（mode 为 modifying，存在原图时）
+1. **Prompt 必须是简短、明确的修改指令，不要写成完整画面描述。**
+2. 重点描述“要变成什么样”或“要改哪里”，不要复述原图已有的场景、风格、人物。
+3. 如果用户说“去掉/删除/移除 X”，prompt 写为“移除 X”或“去掉 X，露出原本的...”，并在 negative_prompt 中加上“X”。
+4. 如果用户说“把 X 改成 Y”，prompt 写为“将 X 改为 Y”。
+5. 如果用户说“加 XX”，prompt 写为“添加 XX”。
+6. Prompt 长度控制在 30-80 字。negative_prompt 可包含“低质量，模糊，变形”以及要去掉的元素。
+7. 不要添加与原图无关的新场景、新人物、新风格。
+
+## 示例
+
+### 示例 1：生成新图
+参数：{"subject":"一个女孩","action":"坐在窗边看书","scene":"温馨书房","style":"写实","color_tone":"暖色调","mood":"宁静"}
+输出：
+{
+  "prompt": "一个写实风格的女孩坐在温馨书房的窗边看书，暖色调阳光洒落，宁静安详，细节丰富，高清，masterpiece",
+  "negative_prompt": "低质量，模糊，变形，多余肢体，文字，水印，签名，冷色调"
+}
+
+### 示例 2：修改图片 - 去掉元素
+用户输入：去掉眼罩
+参数：{"subject":"一个女孩","action":"去掉眼罩","scene":"生日派对","style":"动漫"}
+输出：
+{
+  "prompt": "去掉女孩脸上的眼罩，露出完整脸部",
+  "negative_prompt": "低质量，模糊，变形，眼罩，面具，遮挡，文字，水印，签名"
+}
+
+### 示例 3：修改图片 - 替换元素
+用户输入：把衣服换成红色
+参数：{"subject":"一个女孩","action":"把衣服换成红色","scene":"街道","style":"动漫"}
+输出：
+{
+  "prompt": "将女孩的衣服改为红色",
+  "negative_prompt": "低质量，模糊，变形，多余肢体，文字，水印，签名"
+}`
 }
 
 export function buildStage2UserPrompt(
   extracted: ExtractedParams,
-  editMode: EditMode
+  editMode: EditMode,
+  mode: 'creating' | 'modifying' = 'creating'
 ): string {
   return `编辑模式：${editMode}
+当前阶段：${mode === 'modifying' ? '修改已有图片' : '生成新图片'}
 
 结构化参数：
 ${JSON.stringify(extracted, null, 2)}

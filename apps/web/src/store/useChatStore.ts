@@ -27,9 +27,14 @@ interface ChatStore {
   startRecording: () => void
   stopRecording: () => void
   addUserVoiceMessage: (blob: Blob) => { id: string; audioUrl: string }
+  addUserTextMessage: (text: string) => string
   updateUserMessage: (id: string, content: string) => void
   setProcessing: () => void
-  setClarifying: (response: string, suggestions: string[]) => void
+  setClarifying: (
+    response: string,
+    suggestions: string[],
+    extracted?: ExtractedParams | null
+  ) => void
   setImageReady: (
     response: string,
     imageUrl: string | null,
@@ -88,6 +93,21 @@ export const useChatStore = create<ChatStore>((set) => ({
     return { id, audioUrl }
   },
 
+  addUserTextMessage: (text: string) => {
+    const id = generateId()
+    const message: DisplayMessage = {
+      id,
+      role: 'user',
+      content: text,
+      type: 'text',
+      created_at: new Date().toISOString(),
+    }
+    set((state) => ({
+      messages: [...state.messages, message],
+    }))
+    return id
+  },
+
   updateUserMessage: (id: string, content: string) =>
     set((state) => ({
       messages: state.messages.map((msg) =>
@@ -100,10 +120,15 @@ export const useChatStore = create<ChatStore>((set) => ({
       appState: 'processing',
     }),
 
-  setClarifying: (response: string, suggestions: string[]) =>
+  setClarifying: (
+    response: string,
+    suggestions: string[],
+    extracted: ExtractedParams | null = null
+  ) =>
     set((state) => ({
       appState: 'clarifying',
       pendingClarification: true,
+      currentParams: extracted ?? state.currentParams,
       messages: [
         ...state.messages,
         {
