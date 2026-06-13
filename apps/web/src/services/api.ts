@@ -66,3 +66,28 @@ export async function sendText(
 
   return response.json()
 }
+
+export interface TranscribeResponse {
+  success: boolean
+  transcript?: string
+  error?: string
+}
+
+export async function transcribeAudio(
+  audioBlob: Blob
+): Promise<TranscribeResponse> {
+  const formData = new FormData()
+  formData.append('audio', audioBlob, 'recording.webm')
+
+  const response = await fetch(`${API_BASE_URL}/api/transcribe`, {
+    method: 'POST',
+    headers: getConfigHeaders(),
+    body: formData,
+  })
+
+  if (!response.ok) {
+    throw new Error(`识别失败: ${response.status} ${response.statusText}`)
+  }
+
+  return response.json()
+}

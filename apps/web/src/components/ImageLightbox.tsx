@@ -1,25 +1,14 @@
 import { useEffect } from 'react'
+import { downloadImage } from '../utils/downloadImage'
 
 interface ImageLightboxProps {
   src: string
   onClose: () => void
 }
 
-async function downloadImage(url: string) {
+async function handleDownload(url: string) {
   try {
-    const response = await fetch(url)
-    if (!response.ok) {
-      throw new Error(`下载失败: ${response.status}`)
-    }
-    const blob = await response.blob()
-    const objectUrl = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = objectUrl
-    a.download = `ai-image-${Date.now()}.png`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(objectUrl)
+    await downloadImage(url)
   } catch (error) {
     console.error('下载图片失败:', error)
     alert('下载失败，请右键图片另存为')
@@ -60,7 +49,7 @@ export function ImageLightbox({ src, onClose }: ImageLightboxProps) {
         <div className="absolute top-3 right-3 flex items-center gap-2">
           <button
             type="button"
-            onClick={() => downloadImage(src)}
+            onClick={() => handleDownload(src)}
             className="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-full hover:bg-blue-700 transition-colors shadow-lg"
           >
             下载图片

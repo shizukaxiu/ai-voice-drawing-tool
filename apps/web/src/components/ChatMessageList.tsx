@@ -4,10 +4,9 @@ import { ChatMessageItem } from './ChatMessageItem'
 
 interface ChatMessageListProps {
   messages: DisplayMessage[]
-  onSuggestionClick?: (text: string) => void
 }
 
-export function ChatMessageList({ messages, onSuggestionClick }: ChatMessageListProps) {
+export function ChatMessageList({ messages }: ChatMessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -22,7 +21,7 @@ export function ChatMessageList({ messages, onSuggestionClick }: ChatMessageList
         </div>
       )}
       {messages.map((message) => (
-        <ChatMessageItem key={message.id} message={message} onSuggestionClick={onSuggestionClick} />
+        <ChatMessageItem key={message.id} message={message} />
       ))}
       <div ref={bottomRef} />
     </div>

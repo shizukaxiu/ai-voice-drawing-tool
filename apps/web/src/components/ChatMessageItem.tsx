@@ -1,14 +1,12 @@
 import { useState } from 'react'
 import type { DisplayMessage } from '../store/useChatStore'
-import { SuggestionChips } from './SuggestionChips'
 import { ImageLightbox } from './ImageLightbox'
 
 interface ChatMessageItemProps {
   message: DisplayMessage
-  onSuggestionClick?: (text: string) => void
 }
 
-export function ChatMessageItem({ message, onSuggestionClick }: ChatMessageItemProps) {
+export function ChatMessageItem({ message }: ChatMessageItemProps) {
   const isUser = message.role === 'user'
   const [lightboxOpen, setLightboxOpen] = useState(false)
 
@@ -66,11 +64,6 @@ export function ChatMessageItem({ message, onSuggestionClick }: ChatMessageItemP
           <p className="whitespace-pre-wrap text-sm leading-relaxed">
             {message.content}
           </p>
-        )}
-        {!isUser && message.suggestions && message.suggestions.length > 0 && (
-          <div className="mt-3">
-            <SuggestionChips suggestions={message.suggestions} onSuggestionClick={onSuggestionClick} />
-          </div>
         )}
       </div>
     </div>

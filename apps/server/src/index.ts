@@ -3,6 +3,7 @@ import cors from 'cors'
 import dotenv from 'dotenv'
 import generateRoutes from './routes/generate'
 import generateTextRoutes from './routes/generateText'
+import transcribeRoutes from './routes/transcribe'
 import { apiConfigMiddleware } from './middleware/apiConfig'
 
 dotenv.config()
@@ -20,6 +21,7 @@ app.get('/health', (_req, res) => {
 
 app.use('/api/generate', generateRoutes)
 app.use('/api/generate-text', generateTextRoutes)
+app.use('/api/transcribe', transcribeRoutes)
 
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`)

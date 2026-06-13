@@ -55,7 +55,7 @@
 
 ### 下一步
 
-- [ ] 后端接入讯飞 ASR，将音频转为文字
+- [x] 后端接入讯飞 ASR，将音频转为文字
 
 ---
 
@@ -172,3 +172,89 @@
 - [ ] 图片下载与放大查看
 - [ ] 建议选项一键填入/朗读
 - [ ] 错误重试与加载状态细节优化
+
+---
+
+## 2026-06-13 第八阶段：纯语音交互重构
+
+### 目标
+
+将前端从“按住说话 + 多处按钮”改为“单按钮持续聆听 + 语音命令控制一切”的纯语音交互模式。
+
+### 已完成
+
+- [x] 改造 `useRecorder.ts`
+  - 基于 `AudioContext` + `AnalyserNode` 实现 VAD（语音活动检测）
+  - 使用 `MediaRecorder.start(100)` 定期收集音频块，支持连续多轮输入
+  - 检测到 3 秒静音后自动截取并触发 `onSegment`
+  - 修复 cleanup 调用外部回调导致的无限循环问题
+  - 麦克风权限错误向上抛出，由 `App.tsx` 统一处理
+- [x] 改造 `RecorderButton.tsx`
+  - 从“按住说话 / 松开发送”改为“点击切换聆听状态”
+  - 支持待机、聆听中、说话中、即将发送、处理中五种状态
+  - 显示麦克风错误信息
+- [x] 新增前端本地意图识别
+  - `services/intentRecognizer.ts`：覆盖停止、开始、重画、新对话、保存图片、继续修改
+  - 支持正式说法与口语化表达
+  - 支持连续命令拆分（如“保存，然后重新开始”）
+  - 对长句中的简单命令做保守判断，避免误触发
+- [x] 新增前端命令执行器
+  - `services/commandHandler.ts`：执行命令并返回反馈话术、是否恢复聆听
+  - 保存图片使用 `utils/downloadImage.ts`（与 Lightbox 共用）
+- [x] 重写 `App.tsx`
+  - 移除调试文字输入框
+  - 移除 `ImageActions` 和 `SuggestionChips` 按钮
+  - 点击按钮开始持续聆听，AI 回复后自动恢复聆听
+  - 语音命令本地执行，非命令文本走 `/api/generate-text`
+  - AI 处理中丢弃新的语音片段，避免并发请求
+- [x] 扩展 `useChatStore.ts`
+  - 新增 `isSpeaking`、`silenceDuration`、`setListening`、`setIdle` 等状态与方法
+  - 新增 `addAssistantMessage` 用于命令反馈
+- [x] 更新 `StatusBar.tsx`
+  - 显示“聆听中，请说话”、“正在听你说话”、“即将发送”等状态
+- [x] 简化 `ChatMessageItem.tsx` 和 `ChatMessageList.tsx`
+  - 移除建议按钮的渲染与点击回调
+- [x] 删除遗留组件文件
+  - `components/ImageActions.tsx`
+  - `components/SuggestionChips.tsx`
+- [x] 新增后端 `/api/transcribe` 接口
+  - `apps/server/src/routes/transcribe.ts`
+  - 仅做 ASR，返回 `{ success, transcript }`
+  - 在 `apps/server/src/index.ts` 注册路由
+- [x] 前端 `services/api.ts` 新增 `transcribeAudio` 函数
+- [x] 更新 `.gitignore`
+  - 忽略调试截图 `frontend-*.png`
+- [x] 更新文档
+  - `README.md`：重写交互说明与功能列表
+  - `design.md`：更新架构图、核心流程、API 设计、状态机、目录结构、变更记录
+  - `WORK_LOG.md`：补充第八阶段记录
+- [x] 全量编译通过
+- [x] `npm run lint` 通过
+- [x] 使用 agent-browser 验证页面加载与按钮切换正常
+- [x] 提交并推送到 GitHub
+
+### 关键修复
+
+| 问题 | 原因 | 修复 |
+|------|------|------|
+| 第二轮语音无反馈 | `MediaRecorder.start()` 默认只在 stop 时返回音频，第一轮后无新数据 | 使用 `MediaRecorder.start(100)` 持续收集音频块 |
+| 页面空白 | `useRecorder` cleanup 在 effect 中调用外部回调更新 store，导致无限渲染 | cleanup 只重置内部状态，不调用外部回调 |
+| “停止”命令不关闭麦克风 | 识别到命令后只修改了 UI 状态 | 通过 `stopListeningRef` 真正调用 `recorder.stopRecording()` |
+| 短命令“停”无法触发 | `minSpeechDuration` 500ms 太长 | 缩短至 200ms |
+| 创作描述中嵌入命令词被误识别 | 简单命令对长句过于敏感 | 对 `stop/start/save_image/new_chat` 增加长度保守判断 |
+
+### 语音命令清单
+
+| 命令 | 示例说法 |
+|------|----------|
+| 停止聆听 | 停止、暂停、别说了、可以了、够了 |
+| 整体重画 | 重画、重新画、再来一张、画得不好 |
+| 新对话 | 新对话、重新开始、清空、从头来 |
+| 保存图片 | 保存、下载、存下来、我要这张图 |
+| 继续修改 | 修改、改一下、调整一下、换个风格 |
+
+### 下一步
+
+- [ ] 真实环境多轮语音端到端测试
+- [ ] 根据测试结果继续扩展口语化命令词库
+- [ ] 考虑接入更鲁棒的 VAD 方案

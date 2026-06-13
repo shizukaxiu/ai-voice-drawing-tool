@@ -1,25 +1,39 @@
-import { useState } from 'react'
+import { useCallback, useRef } from 'react'
 import { useRecorder } from './hooks/useRecorder'
 import { useChatStore } from './store/useChatStore'
-import { uploadAudio, sendText } from './services/api'
+import { transcribeAudio, sendText } from './services/api'
 import { RecorderButton } from './components/RecorderButton'
 import { ChatMessageList } from './components/ChatMessageList'
 import { StatusBar } from './components/StatusBar'
-import { ImageActions } from './components/ImageActions'
 import { ConfigPanel } from './components/ConfigPanel'
+import { recognizeIntents } from './services/intentRecognizer'
+import { handleVoiceCommands } from './services/commandHandler'
+import { downloadImage } from './utils/downloadImage'
 import type {
   GenerateRequest,
   GenerateResponse,
   SessionContext,
+  ExtractedParams,
 } from '@voice-draw/shared'
+import type { AudioSegment } from './hooks/useRecorder'
 
 function App() {
   const store = useChatStore()
-  const recorder = useRecorder()
-  const [lastMessageId, setLastMessageId] = useState<string | null>(null)
-  const [debugText, setDebugText] = useState('')
+  const manuallyStoppedRef = useRef(false)
+  const lastMessageIdRef = useRef<string | null>(null)
+  const startListeningRef = useRef<() => Promise<void>>(async () => {})
+  const stopListeningRef = useRef<() => void>(() => {})
+  const handleAudioSegmentRef = useRef<(segment: AudioSegment) => Promise<void>>(
+    async () => {}
+  )
 
-  const buildContext = (): SessionContext | null => {
+  const recorder = useRecorder({
+    onSegment: (segment) => handleAudioSegmentRef.current(segment),
+    onSpeakingChange: (isSpeaking) => store.setSpeaking(isSpeaking),
+    onSilenceDurationChange: (ms) => store.setSilenceDuration(ms),
+  })
+
+  const buildContext = useCallback((): SessionContext | null => {
     if (store.messages.length === 0) return null
     return {
       session_id: store.sessionId,
@@ -36,109 +50,179 @@ function App() {
       pending_clarification: store.pendingClarification,
       mode: store.currentImageUrl ? 'modifying' : 'creating',
     }
-  }
+  }, [
+    store.messages,
+    store.sessionId,
+    store.currentParams,
+    store.currentImageUrl,
+    store.pendingClarification,
+  ])
 
-  const handleResult = (result: GenerateResponse) => {
-    const userTranscript =
-      result.updated_context?.conversation_history
-        ?.slice()
-        .reverse()
-        .find(
-          (m: { type: string; role: string; content: string }) =>
-            m.type === 'voice' && m.role === 'user'
-        )?.content || ''
-    if (lastMessageId) {
-      store.updateUserMessage(lastMessageId, userTranscript)
+  const handleResult = useCallback(
+    (result: GenerateResponse) => {
+      const userTranscript =
+        result.updated_context?.conversation_history
+          ?.slice()
+          .reverse()
+          .find(
+            (m: { type: string; role: string; content: string }) =>
+              m.type === 'voice' && m.role === 'user'
+          )?.content || ''
+      if (lastMessageIdRef.current) {
+        store.updateUserMessage(lastMessageIdRef.current, userTranscript)
+      }
+
+      if (result.status === 'need_clarification') {
+        store.setClarifying(
+          result.response || '',
+          result.suggestions || [],
+          (result.extracted as ExtractedParams | null) || null
+        )
+      } else if (result.status === 'complete') {
+        store.setImageReady(
+          result.response || '',
+          result.image_url || null,
+          (result.extracted as ExtractedParams | null) || null
+        )
+      } else {
+        store.setError(result.response || '处理失败，请重试')
+      }
+    },
+    [store]
+  )
+
+  const startListening = useCallback(async () => {
+    if (store.appState === 'recording' || store.appState === 'processing') {
+      return
     }
-
-    if (result.status === 'need_clarification') {
-      store.setClarifying(
-        result.response || '',
-        result.suggestions || [],
-        (result.extracted as any) || null
-      )
-    } else if (result.status === 'complete') {
-      store.setImageReady(
-        result.response || '',
-        result.image_url || null,
-        (result.extracted as any) || null
-      )
-    } else {
-      store.setError(result.response || '处理失败，请重试')
-    }
-  }
-
-  const handleRecordingStart = () => {
-    store.startRecording()
-  }
-
-  const handleRecordingEnd = () => {
-    store.stopRecording()
-  }
-
-  const handleRecord = async (audioBlob: Blob) => {
-    if (!audioBlob || audioBlob.size === 0) return
-
-    const { id } = store.addUserVoiceMessage(audioBlob)
-    setLastMessageId(id)
-    store.setProcessing()
-
-    const request: GenerateRequest = {
-      session_id: store.sessionId,
-      context: buildContext(),
-      edit_mode: store.nextEditMode,
-    }
-
+    manuallyStoppedRef.current = false
+    store.setListening()
     try {
-      const result = await uploadAudio(audioBlob, request)
-      console.log('后端响应:', result)
-      handleResult(result)
-    } catch (error) {
-      console.error('请求失败:', error)
+      await recorder.startRecording()
+    } catch (err) {
+      store.setIdle()
       store.setError(
-        error instanceof Error ? error.message : '请求失败，请重试'
+        err instanceof Error ? err.message : '无法访问麦克风，请检查权限设置'
       )
-    } finally {
-      store.setNextEditMode('image_edit')
     }
-  }
+  }, [store, recorder])
 
-  const submitText = async (text: string) => {
-    const id = store.addUserTextMessage(text)
-    setLastMessageId(id)
-    store.setProcessing()
+  startListeningRef.current = startListening
 
-    const request: GenerateRequest = {
-      session_id: store.sessionId,
-      context: buildContext(),
-      edit_mode: store.nextEditMode,
+  const stopListening = useCallback(() => {
+    manuallyStoppedRef.current = true
+    recorder.stopRecording()
+    store.setIdle()
+  }, [store, recorder])
+
+  stopListeningRef.current = stopListening
+
+  const resumeListeningIfNeeded = useCallback(async () => {
+    if (!manuallyStoppedRef.current && store.appState !== 'processing') {
+      await startListeningRef.current()
     }
+  }, [store.appState])
 
-    try {
-      const result = await sendText(text, request)
-      console.log('后端响应:', result)
-      handleResult(result)
-    } catch (error) {
-      console.error('请求失败:', error)
-      store.setError(
-        error instanceof Error ? error.message : '请求失败，请重试'
-      )
-    } finally {
-      store.setNextEditMode('image_edit')
+  const processCreativeInput = useCallback(
+    async (text: string) => {
+      store.setProcessing()
+
+      const request: GenerateRequest = {
+        session_id: store.sessionId,
+        context: buildContext(),
+        edit_mode: store.nextEditMode,
+      }
+
+      try {
+        const result = await sendText(text, request)
+        console.log('后端响应:', result)
+        handleResult(result)
+      } catch (error) {
+        console.error('请求失败:', error)
+        store.setError(
+          error instanceof Error ? error.message : '请求失败，请重试'
+        )
+      } finally {
+        store.setNextEditMode('image_edit')
+        await resumeListeningIfNeeded()
+      }
+    },
+    [store, buildContext, handleResult, resumeListeningIfNeeded]
+  )
+
+  const handleAudioSegment = useCallback(
+    async (segment: AudioSegment) => {
+      if (!segment.blob || segment.blob.size === 0) return
+      // AI 处理中时不处理新的语音片段，避免并发请求和状态混乱
+      if (store.appState === 'processing') return
+
+      const { id } = store.addUserVoiceMessage(segment.blob)
+      lastMessageIdRef.current = id
+      store.setProcessing()
+
+      try {
+        const transcribeResult = await transcribeAudio(segment.blob)
+        if (
+          !transcribeResult.success ||
+          !transcribeResult.transcript?.trim()
+        ) {
+          store.updateUserMessage(id, '（未能识别）')
+          store.setError('没能听清，请再说一次')
+          await resumeListeningIfNeeded()
+          return
+        }
+
+        const text = transcribeResult.transcript.trim()
+        store.updateUserMessage(id, text)
+
+        const intents = recognizeIntents(text)
+        const isCommand =
+          intents.length > 0 && intents.every((i) => i.type !== 'unknown')
+
+        if (isCommand) {
+          const result = await handleVoiceCommands(intents, {
+            resetChat: () => store.resetChat(),
+            setNextEditMode: (mode) => store.setNextEditMode(mode),
+            currentImageUrl: store.currentImageUrl,
+            downloadImage,
+          })
+
+          if (result.handled) {
+            if (result.feedback) {
+              store.addAssistantMessage(result.feedback)
+            }
+            if (result.shouldResume) {
+              await startListeningRef.current()
+            } else {
+              // 停止命令需要真正关闭麦克风
+              stopListeningRef.current()
+            }
+            return
+          }
+        }
+
+        // 非命令：走创作/修改流程
+        await processCreativeInput(text)
+      } catch (error) {
+        console.error('处理失败:', error)
+        store.setError(
+          error instanceof Error ? error.message : '请求失败，请重试'
+        )
+        await resumeListeningIfNeeded()
+      }
+    },
+    [store, processCreativeInput, resumeListeningIfNeeded]
+  )
+
+  handleAudioSegmentRef.current = handleAudioSegment
+
+  const toggleListening = useCallback(async () => {
+    if (store.appState === 'recording') {
+      stopListening()
+    } else if (store.appState !== 'processing') {
+      await startListening()
     }
-  }
-
-  const handleDebugSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!debugText.trim()) return
-    setDebugText('')
-    await submitText(debugText)
-  }
-
-  const handleSuggestionClick = (text: string) => {
-    if (store.appState === 'processing') return
-    submitText(text)
-  }
+  }, [store.appState, startListening, stopListening])
 
   const isBusy = store.appState === 'processing'
 
@@ -160,63 +244,27 @@ function App() {
 
           <div className="flex-1 overflow-y-auto min-h-0">
             <div className="max-w-3xl mx-auto">
-              <ChatMessageList
-                messages={store.messages}
-                onSuggestionClick={handleSuggestionClick}
-              />
+              <ChatMessageList messages={store.messages} />
             </div>
           </div>
 
           <div className="max-w-3xl mx-auto w-full">
-            <StatusBar appState={store.appState} />
+            <StatusBar
+              appState={store.appState}
+              isSpeaking={store.isSpeaking}
+              silenceDuration={store.silenceDuration}
+            />
           </div>
-
-          {store.appState === 'image_ready' && (
-            <div className="max-w-3xl mx-auto w-full">
-              <ImageActions
-                onRegenerate={() => {
-                  store.setNextEditMode('regenerate')
-                  window.scrollTo({
-                    top: document.body.scrollHeight,
-                    behavior: 'smooth',
-                  })
-                }}
-                onNewChat={() => store.resetChat()}
-              />
-            </div>
-          )}
-
-          {import.meta.env.DEV && (
-            <form
-              onSubmit={handleDebugSubmit}
-              className="bg-yellow-50 border-t border-yellow-200 px-4 py-2 flex gap-2"
-            >
-              <input
-                type="text"
-                value={debugText}
-                onChange={(e) => setDebugText(e.target.value)}
-                placeholder="调试：输入文字测试"
-                disabled={isBusy}
-                className="flex-1 px-3 py-1.5 text-sm border border-yellow-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-400"
-              />
-              <button
-                type="submit"
-                disabled={isBusy}
-                className="px-3 py-1.5 text-sm font-medium text-yellow-800 bg-yellow-200 rounded-md hover:bg-yellow-300 disabled:opacity-50"
-              >
-                发送
-              </button>
-            </form>
-          )}
 
           <div className="bg-white border-t border-gray-200 px-4 py-4">
             <div className="max-w-md mx-auto flex items-center justify-center">
               <RecorderButton
-                recorder={recorder}
-                disabled={isBusy}
-                onRecordingStart={handleRecordingStart}
-                onRecordingEnd={handleRecordingEnd}
-                onRecord={handleRecord}
+                isListening={store.appState === 'recording'}
+                isSpeaking={store.isSpeaking}
+                isBusy={isBusy}
+                silenceDuration={store.silenceDuration}
+                error={recorder.error}
+                onToggle={toggleListening}
               />
             </div>
           </div>
